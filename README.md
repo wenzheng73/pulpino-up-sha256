@@ -1,3 +1,5 @@
+## [A simple user_plugin example: SHA256](SHA256.md)
+
 <img src="https://raw.githubusercontent.com/pulp-platform/pulpino/master/doc/datasheet/figures/pulpino_logo_inline1.png" width="400px" />
 
 # Introduction
@@ -107,7 +109,6 @@ inside the folder to generate the pdf. Note that you need a working version of l
 
 ## [Running simulations](SIM.md)
 
-## [SHA256](SHA256.md)
 
 ## Interactive debug
 
