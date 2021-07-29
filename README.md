@@ -107,6 +107,7 @@ inside the folder to generate the pdf. Note that you need a working version of l
 
 ## [Running simulations](SIM.md)
 
+## [SHA256](SHA256.md)
 
 ## Interactive debug
 
