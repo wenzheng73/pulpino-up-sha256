@@ -2,7 +2,10 @@
 
 # [A simple user-plugin example: SHA256](SHA256.md)
 SHA256 is a simple user-plugin example to help PULPino-user write their own 
-user-pulgin. SHA256 is based on pulpino/rtl/user_plugin/rtl/apb_up.sv, 
+user-pulgin. SHA256 is based on 
+```sh
+pulpino/rtl/user_plugin/rtl/apb_up.sv, 
+```
 interconnect with PULPino platform through APB bus. 
 
 
