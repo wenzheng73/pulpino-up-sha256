@@ -22,11 +22,11 @@ module user_plugin
 
     assign int_o = apb_up_int_o | axi_up_int_o;
 
-    apb_up 
+    sha2apb 
     #(
         .APB_ADDR_WIDTH(12)
     )
-    apb_up_i
+    sha2apb_i
     (
         .HCLK       ( clk_i               ),
         .HRESETn    ( rst_n               ),
