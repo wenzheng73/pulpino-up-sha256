@@ -176,7 +176,7 @@ module pulpemu_top(
   assign ref_clk_i          = ps7_clk;
   assign clking_axi_aclk    = ps7_clk;
   assign clking_axi_aresetn = ps7_rst_clking_n;
-  assign rst_ni             = fetch_enable[31];
+  assign rst_ni             = sw_i[1];//fetch_enable[31];
   assign ps7_rst_pulp_n     = ps7_rst_n;
   assign ps7_rst_clking_n   = ps7_rst_n;
 
@@ -189,7 +189,7 @@ module pulpemu_top(
     if(ps7_rst_n == 1'b0)
       fetch_en_r = 1'b0;
     else
-      fetch_en_r = fetch_enable[0];
+      fetch_en_r = sw_i[0]; //fetch_enable[0];
   end
 
   // JTAG signals
@@ -215,14 +215,18 @@ module pulpemu_top(
   always @(posedge s_clk_pulpino or negedge s_rstn_pulpino)
   begin
     if (~s_rstn_pulpino)
-      LD_q <= 8'b0;
+      LD_q <= 8'b11111100;
     else
       LD_q <= gpio_out[15:8];
   end
-
-  assign LD_o = LD_q;
-
+  
+  assign LD_o[7:4] = LD_q[7:4];
+  assign LD_o[2]   = ps7_rst_n;
+  assign LD_o[1:0] = sw_i[1:0];
+  
   assign gpio_in[7:0]   = sw_i;
+  
+
   assign gpio_in[15:8]  = 8'b0;
   assign gpio_in[20:16] = btn_i;
   assign gpio_in[31:21] = gpio_in_ps7[31:21];

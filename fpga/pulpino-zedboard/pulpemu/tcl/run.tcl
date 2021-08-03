@@ -29,8 +29,8 @@ if { ![info exists ::env(ZERO_RV32E)] } {
 }
 
 
-set RTL ../../rtl
-set IPS ../../ips
+set RTL ../../../rtl
+set IPS ../../../ips
 set FPGA_IPS ../ips
 set FPGA_RTL ../rtl
 set FPGA_PULPINO ../pulpino
@@ -44,7 +44,7 @@ if { [info exists ::env(XILINX_BOARD) ] } {
 
 
 # set up meaningful errors
-source ../common/messages.tcl
+source ../../common/messages.tcl
 
 # create block design
 source tcl/ps7_bd.tcl

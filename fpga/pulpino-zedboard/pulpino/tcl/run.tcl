@@ -10,6 +10,7 @@ if { ![info exists ::env(XILINX_BOARD)] } {
   set ::env(XILINX_BOARD) "em.avnet.com:zynq:zed:c"
 }
 
+
 if { ![info exists ::env(USE_ZERO_RISCY)] } {
   puts "USE_ZERO_RISCY = 0"
   set ::env(USE_ZERO_RISCY) 0
@@ -54,7 +55,6 @@ if { $::env(USE_ZERO_RISCY)==1} {
 }
 
 
-
 # create project
 create_project pulpino . -part $::env(XILINX_PART)
 set_property board $::env(XILINX_BOARD) [current_project]
@@ -62,7 +62,7 @@ set_property board $::env(XILINX_BOARD) [current_project]
 source tcl/ips_inc_dirs.tcl
 
 # set up meaningful errors
-source ../common/messages.tcl
+source ../../common/messages.tcl
 
 source tcl/ips_src_files.tcl
 source tcl/src_files.tcl
@@ -88,7 +88,7 @@ add_files -norecurse $SRC_COMPONENTS
 
 # add pulpino
 add_files -norecurse $SRC_PULPINO
-
+add_files -norecurse $SRC_USER_PLUGIN 
 # set pulpino_top as top
 set_property top pulpino [current_fileset]
 
