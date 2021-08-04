@@ -31,7 +31,9 @@ module pulpemu_top(
   FIXED_IO_ps_porb,
   FIXED_IO_ps_srstb,
   LD_o,
-  sw_i,
+  //sw_i,
+  test_led,
+  
   btn_i,
   oled_sclk_io,
   oled_sdin_io,
@@ -69,8 +71,11 @@ module pulpemu_top(
   inout         FIXED_IO_ps_srstb;
 
   output  [7:0] LD_o;
-  input   [7:0] sw_i;
+  //input   [7:0] sw_i;
   input   [4:0] btn_i;
+  
+  input         test_led;
+  
   inout         oled_sclk_io;
   inout         oled_sdin_io;
   output        oled_dc_o;
@@ -84,6 +89,8 @@ module pulpemu_top(
   input         ext_tms_i;
   output        ext_tdo_o;
 
+
+  wire  [7:0] sw_i;
 
   wire [14:0] DDR_addr;
   wire [2:0]  DDR_ba;
@@ -166,6 +173,7 @@ module pulpemu_top(
   wire        clking_axi_rvalid;  // output
   wire        clking_axi_rready;  // input
 
+
   wire        uart_tx;            // output
   wire        uart_rx;            // input
 
@@ -181,6 +189,8 @@ module pulpemu_top(
   assign ps7_rst_clking_n   = ps7_rst_n;
 
   reg fetch_en_r;
+  reg [16:0] led_cnt;
+  
 
   assign fetch_en = fetch_en_r;
 
@@ -212,12 +222,19 @@ module pulpemu_top(
 
 
   // GPIO signals
-  always @(posedge s_clk_pulpino or negedge s_rstn_pulpino)
+  always @(posedge s_clk_pulpino)
+  begin   
+      LD_q[7:2] <= gpio_out[15:10];
+      LD_q[0] <= test_led;     
+  end
+
+  always @(posedge ps7_clk)
   begin
-    if (~s_rstn_pulpino)
-      LD_q <= 8'b0;
+    led_cnt <= led_cnt + 1'b1;
+    if (led_cnt == 'd0)
+      LD_q[1] <= ~LD_q[1];
     else
-      LD_q <= gpio_out[15:8];
+      LD_q[1] <= LD_q[1];
   end
 
   assign LD_o = LD_q;
@@ -239,6 +256,19 @@ module pulpemu_top(
 
   assign oled_dc_o    = gpio_out[16];
   assign oled_res_o   = gpio_out[17];
+
+ /* ila_0 ila_0(
+     .clk(s_clk_pulpino),
+     .probe0(LD_q[0]),
+     .probe1(LD_q[1]),
+     .probe2(test_led),
+     .probe3(led_cnt)
+     .probe4(ext_trstn_i),
+     .probe5(ext_tck_i),
+     .probe6(ext_tdi_i),
+     .probe7(ext_tdo_o),
+     .probe8(ext_tms_i)
+  );*/
 
   // Zynq Processing System
   ps7_wrapper ps7_wrapper_i (
