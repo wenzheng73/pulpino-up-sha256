@@ -64,8 +64,6 @@ module pad_io
 endmodule
 
 
-// Due to pad ring creation limitation,
-// add more signals to be compatible with more processes.
 module pad_clk_in
 (
   input  logic tie0,
