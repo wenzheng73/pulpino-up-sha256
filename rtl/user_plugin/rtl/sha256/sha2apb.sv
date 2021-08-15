@@ -87,11 +87,10 @@ module sha2apb
     assign s_apb_addr  = PADDR[7:2];
 
     ////////////////
-    // User Logic //
+    // registers  //
     ////////////////
 
-    // registers
-    logic [31:0] unused_data; //for unused PWDATA
+    logic [31:0] unused_data; // for unused PWDATA
     logic [7:0] r_ctrl;       // ctrl register
     logic [7:0] s_status;     // status register
 
@@ -104,59 +103,42 @@ module sha2apb
     assign s_int_en = r_ctrl[`CTRL_INT_EN_BIT];
 
     assign int_o    = s_int_en & r_int_flag;
-   
-    ////////////////////
-    // UPIO registers //
-    ////////////////////
-
-    // A value of 1 means it is configured as an output,
-    // while 0 configures it as an input.
-    logic [7:0] r_upio_paddir;
-    logic [7:0] r_upio_padout;
-
-    assign upio_dir_o = r_upio_paddir;
-    assign upio_out_o = r_upio_padout;
     
     /////////////////
     // hashed data //
     /////////////////	    
     always_ff @ (posedge HCLK, negedge HRESETn)
-	  begin
- 		    if (~HRESETn)
- 		      begin
-    		      r_hashed_data <= 256'b0;
-			    end
-    		  else if(done)
-        		  r_hashed_data <= hashed_data;
-	  end
+        if (~HRESETn)
+            r_hashed_data <= 256'b0;
+        else if(done)
+            r_hashed_data <= hashed_data;
 	  
     ////////////////////
     // interrupt flag //
     ////////////////////	  
-	  always_ff @ (posedge HCLK, negedge HRESETn)
-	  if(!HRESETn)
-	      r_int_flag <= 1'b0;
-	  else if(done)
-	      r_int_flag <= 1'b1;
-	  else if(s_apb_write & (s_apb_addr == `SHA_REG_CMD)) begin
-	         if (PWDATA[`CMD_CLR_INT_BIT])
-                 r_int_flag <= 1'b0;
-          else if (PWDATA[`CMD_SET_INT_BIT])
-                 r_int_flag <= 1'b1;
-    end
+    always_ff @ (posedge HCLK, negedge HRESETn)
+        if(!HRESETn)
+            r_int_flag <= 1'b0;
+        else if(done)
+            r_int_flag <= 1'b1;
+        else if(s_apb_write & (s_apb_addr == `SHA_REG_CMD)) 
+        begin
+            if (PWDATA[`CMD_CLR_INT_BIT])
+                r_int_flag <= 1'b0;
+            else if (PWDATA[`CMD_SET_INT_BIT])
+                r_int_flag <= 1'b1;
+        end
               
     ///////////////
     // hash flag //
     ///////////////
     always_ff@(posedge HCLK or negedge HRESETn)
-    begin
         if(!HRESETn)
             hash_flag <= 1'b0;
         else if(done)
             hash_flag <= 1'b0;
         else if(s_apb_write & (s_apb_addr == `SHA_REG_MESSAGE))
             hash_flag <= 1'b1;
-    end
   
     //////////////////
     // StateMachine //
@@ -169,62 +151,51 @@ module sha2apb
              	} r_stm, s_stm_n;
 
     always_ff @ (posedge HCLK, negedge HRESETn)
-	  begin
- 		    if (~HRESETn)
- 		      begin
-    		      r_stm <= IDLE;
-			    end
-    		  else
-        		  r_stm <= s_stm_n;
-	  end
+        if (~HRESETn)
+            r_stm <= IDLE;
+        else
+            r_stm <= s_stm_n;
 
     always_comb
     begin
-		        PREADY = 1'b0;
-		        
-		        s_apb_write = 1'b0;
-		        s_apb_read = 1'b0;
-		        hash_en = 1'b0;
-		        //s_apb_write = PSEL & PENABLE & PWRITE & !hash_en;
-		        
-    	       case (r_stm)
-    	           IDLE:
-    	           begin
-    	               if(PSEL && PENABLE && PWRITE)
-	                      s_stm_n = WAIT_WRITE;
-	                  else if(hash_flag)
-	                      s_stm_n = WAIT_COMPLETE;
-	                  else if(PSEL && PENABLE && (!PWRITE))
-    	                   s_stm_n = WAIT_READ;
-  	                 else s_stm_n = IDLE;
-  	             end
+        PREADY = 1'b0;        
+        s_apb_write = 1'b0;
+        s_apb_read = 1'b0;
+        hash_en = 1'b0;
+
+        case (r_stm)
+            IDLE:begin
+                if(PSEL && PENABLE && PWRITE)
+	            s_stm_n = WAIT_WRITE;
+                else if(hash_flag)
+	            s_stm_n = WAIT_COMPLETE;
+                else if(PSEL && PENABLE && (!PWRITE))
+                    s_stm_n = WAIT_READ;
+                else s_stm_n = IDLE;
+            end
   	             
-       	        WAIT_WRITE:
-        	       begin
-       	            PREADY = 1'b1;
-     	              s_apb_write = 1'b1;
-     	              s_stm_n = IDLE;
-        	       end
-
-        	       WAIT_COMPLETE:
-        	       begin
-                           hash_en = !done;
-                           if(done) begin
-                               s_stm_n = IDLE;
-                           end
-                           else    s_stm_n = WAIT_COMPLETE;
-        	       end
-
-        	       WAIT_READ:
-                    begin
-                        PREADY = 1'b1;
-                        s_apb_read = 1'b1;
-                        s_stm_n = IDLE;
-                    end
-                    
-        	       default:
-            		      s_stm_n = IDLE;
-    		      endcase
+            WAIT_WRITE:begin
+       	        PREADY = 1'b1;
+                s_apb_write = 1'b1;
+                s_stm_n = IDLE;
+            end
+    
+            WAIT_COMPLETE:begin
+                hash_en = !done;
+                if(done) 
+                    s_stm_n = IDLE;
+                else s_stm_n = WAIT_COMPLETE;
+            end
+    
+            WAIT_READ:begin
+                PREADY = 1'b1;
+                s_apb_read = 1'b1;
+                s_stm_n = IDLE;
+            end
+                        
+            default:
+                s_stm_n = IDLE;
+        endcase
     end
     
     ///////////////
@@ -232,76 +203,56 @@ module sha2apb
     ///////////////
     always_ff @ (posedge HCLK, negedge HRESETn)
     begin
-        if (~HRESETn)
-        begin
+        if (~HRESETn) begin
             r_ctrl     <= 8'b0;
-
-            r_upio_paddir <= 8'b0;
-            r_upio_padout <= 8'b0;
-	    
             r_message   <= 24'b0;
         end
-        else if (s_apb_write)
-             begin
-                 case (s_apb_addr)
-                     `SHA_REG_CTRL:
-                         r_ctrl <= PWDATA[7:0];
-                     `SHA_REG_PADDIR:
-                         r_upio_paddir <= PWDATA[7:0];
-                     `SHA_REG_PADOUT:
-                         r_upio_padout <= PWDATA[7:0];
-		                 `SHA_REG_MESSAGE:
-                         r_message <= PWDATA[23:0];
-		     default:
-			 unused_data <= PWDATA;
-			 
-                 endcase
-             end
+        else if (s_apb_write) begin
+            case (s_apb_addr)
+                `SHA_REG_CTRL:
+                    r_ctrl <= PWDATA[7:0];
+                `SHA_REG_MESSAGE:
+                    r_message <= PWDATA[23:0];
+                default:
+                    unused_data <= PWDATA; 
+            endcase
+        end
     end 
 
     //////////////
     // REG READ //
     //////////////
-    always_comb
-    if(s_apb_read)
-      begin
-        case (s_apb_addr)
-            `SHA_REG_CTRL:
-                PRDATA = {24'b0, r_ctrl};
-            `SHA_REG_STATUS:
-                PRDATA = {24'b0, s_status};
-            `SHA_REG_PADDIR:
-                PRDATA = {24'b0, r_upio_paddir};
-            `SHA_REG_PADIN:
-                PRDATA = {24'b0, upio_in_i};
-            `SHA_REG_PADOUT:
-                PRDATA = {24'b0, r_upio_padout};
-            `SHA_REG_MESSAGE:
-                PRDATA = {8'b0,r_message};
-            `SHA_REG_OUT0:
-                PRDATA = r_out0;
-            `SHA_REG_OUT1:
-                PRDATA = r_out1;
-            `SHA_REG_OUT2:
-                PRDATA = r_out2;
-            `SHA_REG_OUT3:
-                PRDATA = r_out3;
-            `SHA_REG_OUT4:
-                PRDATA = r_out4;
-            `SHA_REG_OUT5:
-                PRDATA = r_out5;
-            `SHA_REG_OUT6:
-                PRDATA = r_out6;
-            `SHA_REG_OUT7:
-                PRDATA = r_out7;
-
-	           default:
-                PRDATA = {20'b0,PADDR};//for unused PADDR
-        endcase
-    
-      end
-    else PRDATA ='h0;
-
+    always_comb 
+    begin
+        if(s_apb_read)
+            case (s_apb_addr)
+                `SHA_REG_CTRL:
+                    PRDATA = {24'b0, r_ctrl};
+                `SHA_REG_STATUS:
+                    PRDATA = {24'b0, s_status};
+                `SHA_REG_MESSAGE:
+                    PRDATA = {8'b0,r_message};
+                `SHA_REG_OUT0:
+                    PRDATA = r_out0;
+                `SHA_REG_OUT1:
+                    PRDATA = r_out1;
+                `SHA_REG_OUT2:
+                    PRDATA = r_out2;
+                `SHA_REG_OUT3:
+                    PRDATA = r_out3;
+                `SHA_REG_OUT4:
+                    PRDATA = r_out4;
+                `SHA_REG_OUT5:
+                    PRDATA = r_out5;
+                `SHA_REG_OUT6:
+                    PRDATA = r_out6;
+                `SHA_REG_OUT7:
+                    PRDATA = r_out7;
+                default:
+                    PRDATA = {20'b0,PADDR};//for unused PADDR
+            endcase
+        else PRDATA ='h0;
+    end
 
     sha256_24bit_in	sha_top
     (
