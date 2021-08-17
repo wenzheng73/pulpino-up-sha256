@@ -45,6 +45,9 @@ module sha2apb
 
     output logic                      int_o
 );  
+    //unused output
+    assign upio_out_o = 8'h0;
+    assign upio_dir_o = 8'h0;
     ///////////////
     // SHA Logic //
     ///////////////
@@ -206,6 +209,7 @@ module sha2apb
         if (~HRESETn) begin
             r_ctrl     <= 8'b0;
             r_message   <= 24'b0;
+            unused_data <= 32'b0;
         end
         else if (s_apb_write) begin
             case (s_apb_addr)
