@@ -12,8 +12,9 @@ module pulpino(
   clk,
   rst_n,
 
-  fetch_enable_n,
+  fetch_enable_i,
 
+  spi_clk_i,
   spi_cs_i,
   spi_mode_o,
   spi_sdo0_o,
@@ -54,8 +55,10 @@ module pulpino(
   sda_o,
   sda_oen_o,
 
+  gpio_in,
   gpio_out,
-  
+  gpio_dir,
+
   tck_i,
   trstn_i,
   tms_i,
@@ -67,9 +70,9 @@ module pulpino(
   input         clk;
   input         rst_n;
 
-  input         fetch_enable_n;
+  input         fetch_enable_i;
 
-  
+  input         spi_clk_i;
   input         spi_cs_i;
   output  [1:0] spi_mode_o;
   output        spi_sdo0_o;
@@ -110,9 +113,9 @@ module pulpino(
   output        sda_o;
   output        sda_oen_o;
 
-  output   [3:0]  gpio_out;
- // output [31:0] gpio_in;
- // output [31:0] gpio_dir;
+  input  [31:0] gpio_in;
+  output [31:0] gpio_out;
+  output [31:0] gpio_dir;
 
   // JTAG signals
   input  tck_i;
@@ -126,37 +129,6 @@ module pulpino(
   parameter ZERO_RV32M = 0;
   parameter ZERO_RV32E = 0;
    
-  wire  [31:0] gpio_in;
-  wire  [31:0] gpio_dir;
-  wire [31:0]  gpio_out_r;
-  wire         spi_clk_i;
-  reg          usr_clk;
-  reg  [25:0]  cnt ;
-  reg   [3:0]  usr_cnt;
-  
-  assign spi_clk_i = clk;
-  assign gpio_out[2:0] = gpio_out_r[2:0];
-  assign gpio_out[3] = (cnt < 26'd2500_0000) ? 1'b1 : 1'b0 ;
-always @ (posedge clk) begin
-    if(0)
-        cnt <= 26'd0;
-    else if(cnt < 26'd5000_0000)
-        cnt <= cnt + 1'b1;
-    else
-        cnt <= 26'd0;
-end
-
-always @ (posedge clk) begin
-    if(!rst_n)
-        usr_cnt <= 4'd0;
-    else if(usr_cnt < 4'd4)
-        usr_cnt <= usr_cnt + 1'b1;
-    else begin
-        usr_cnt <= 4'd0;
-        usr_clk <= ~usr_clk;
-        end
-end
-
   // PULP SoC
   pulpino_top
   #(
@@ -167,14 +139,14 @@ end
   )
   pulpino_i
   (
-    .clk               ( usr_clk               ),
+    .clk               ( clk               ),
     .rst_n             ( rst_n             ),
 
     .clk_sel_i         ( 1'b0              ),
     .clk_standalone_i  ( 1'b0              ),
 
     .testmode_i        ( 1'b0              ),
-    .fetch_enable_i    ( ~fetch_enable_n    ),
+    .fetch_enable_i    ( fetch_enable_i    ),
     .scan_enable_i     ( 1'b0              ),
 
     .spi_clk_i         ( spi_clk_i         ),
@@ -219,7 +191,7 @@ end
     .sda_padoen_o      ( sda_oen_o         ),
 
     .gpio_in           ( gpio_in           ),
-    .gpio_out          ( gpio_out_r          ),
+    .gpio_out          ( gpio_out          ),
     .gpio_dir          ( gpio_dir          ),
     .gpio_padcfg       (                   ),
 
