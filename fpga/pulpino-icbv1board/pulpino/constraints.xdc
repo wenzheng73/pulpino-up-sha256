@@ -1,4 +1,5 @@
-create_clock -period 5.000 -name clk [get_ports clk]
+create_clock -period 20 -name clk [get_ports clk]
+
 set_property -dict {PACKAGE_PIN T4 IOSTANDARD LVCMOS15} [get_ports fetch_enable_n]
 set_property PULLDOWN true [get_ports fetch_enable_n]
 set_property -dict {PACKAGE_PIN T3 IOSTANDARD LVCMOS15} [get_ports rst_n]
@@ -8,6 +9,12 @@ set_property PULLDOWN true [get_ports clk]
 #set_property -dict {PACKAGE_PIN T6 IOSTANDARD LVCMOS15} [get_ports key[3]]
 
 #spi
+
+set_property -dict {PACKAGE_PIN Y13 IOSTANDARD LVCMOS33} [get_ports spi_clk_i]
+set_property PULLDOWN true [get_ports spi_clk_i]
+set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets spi_clk_i]
+
+
 set_property -dict {PACKAGE_PIN U1 IOSTANDARD LVCMOS15} [get_ports spi_cs_i]
 set_property PULLDOWN true [get_ports spi_cs_i]
 set_property -dict {PACKAGE_PIN U2 IOSTANDARD LVCMOS15} [get_ports {spi_mode_o[0]}]
@@ -62,9 +69,9 @@ set_property PULLDOWN true [get_ports spi_master_sdi2_i]
 set_property -dict {PACKAGE_PIN C2 IOSTANDARD LVCMOS15} [get_ports spi_master_sdi3_i]
 set_property PULLDOWN true [get_ports spi_master_sdi3_i]
 #uart
-set_property -dict {PACKAGE_PIN B2 IOSTANDARD LVCMOS15} [get_ports uart_tx]
+set_property -dict {PACKAGE_PIN D17 IOSTANDARD LVCMOS15} [get_ports uart_tx]
 set_property PULLDOWN true [get_ports uart_tx]
-set_property -dict {PACKAGE_PIN E1 IOSTANDARD LVCMOS15} [get_ports uart_rx]
+set_property -dict {PACKAGE_PIN E14 IOSTANDARD LVCMOS15} [get_ports uart_rx]
 set_property PULLDOWN true [get_ports uart_rx]
 set_property -dict {PACKAGE_PIN D1 IOSTANDARD LVCMOS15} [get_ports uart_rts]
 set_property PULLDOWN true [get_ports uart_rts]
