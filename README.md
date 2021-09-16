@@ -2,7 +2,7 @@
 
 # [A Simple User-Plugin Example: SHA256](SHA256.md)
 SHA256 is a simple user-plugin example to help PULPino-user write their own 
-user-pulgin. SHA256 is written by systemverilog, 
+user-plugin. SHA256 is written by systemverilog, 
 and interconnect with PULPino platform through APB bus,
 and encrypts a 24-bit character to 512-bit output.
 
