@@ -18,61 +18,84 @@ void ISR_UP() {
     printf("In User Plugin interrupt\n");
 }
 
-void do_check_sha256(int* errors, int msg_num){
+void show_and_check_regs(int* errors, unsigned expected_ctrl, unsigned expected_status) {
+    // cmd reg is always zero, when reading
+    unsigned expected_cmd = 0;
 
-    unsigned expect_out [24] = {
-                           //message1(0x303030)'s expected output
-                           0x2AC9A674, 0x6ACA543A, 0xF8DFF398, 0x94CFE817,
-                           0x3AFBA21E, 0xB01C6FAE, 0x33D52947, 0x222855EF,
+    unsigned ctrl = UP_APB_CTRL;
+    unsigned cmd = UP_APB_CMD;
+    unsigned status = UP_APB_STATUS;
 
-                           //message2(0x313131)'s expected output
-                           0xF6E0A1E2, 0xAC41945A, 0x9AA7FF8A, 0x8AAA0CEB,
-                           0xC12A3BCC, 0x981A929A, 0xD5CF810A, 0x090E11AE,                                    
-
-                           //message3(0x323232)'s expected output
-                           0x9B871512, 0x327C09CE, 0x91DD649B, 0x3F96A63B,
-                           0x7408EF26, 0x7C8CC571, 0x0114E629, 0x730CB61F }; 
-
-
-    unsigned expect_msg [3] = {
-                          0x303030, //message1
-
-                          0x313131, //message2
-
-                          0x323232  //message3
-                         };
-
-    //Read message and outputs
-    unsigned message = SHA256_MESSAGE;
-    if(message != expect_msg[msg_num])
-       printf("MESSAGE WRONG! EXPECTED MESSAGE IS 0x%X, WRONG MESSAGE IS 0x%X",expect_msg[msg_num],message);
-    else    printf("MESSAGE RIGHT! MESSAGE IS 0x%X \n",message);
-
-    unsigned out [8];
-
-    out[0] = SHA256_OUT0;
-    out[1] = SHA256_OUT1;
-    out[2] = SHA256_OUT2;
-    out[3] = SHA256_OUT3;
-
-    out[4] = SHA256_OUT4;
-    out[5] = SHA256_OUT5;
-    out[6] = SHA256_OUT6;
-    out[7] = SHA256_OUT7;
-    
-    for(int i = 0; i < 8; i++ ){
-        if( out[i] != expect_out[i + msg_num * 8] ){
-            ++errors;
-
-            printf("THERE'S AN ERROR WHEN MESSAGE=%X\n, OUTPUT NUMBER = %X \n", message, i);
-            printf("EXPECTED OUTPUT IS 0x%X, WRONG OUTPUT IS 0x%X \n", expect_out[i + msg_num * 8], out[i]);}
-
-        else    printf("OUT RIGHT! OUT IS 0x%X \n", out[i] );  
+    printf("ctrl: 0x%X\n", ctrl);
+    printf("cmd: 0x%X\n", cmd);
+    printf("status: 0x%X\n", status);
+    if (ctrl != expected_ctrl) {
+        ++(*errors);
+        printf("Expected ctrl reg: 0x%X, but got: 0x%X\n", expected_ctrl, ctrl);
     }
- 
-    printf("INTURREPT NUM AT ALL IS %X\n",g_up_int_triggers );
+    if (cmd != expected_cmd) {
+        ++(*errors);
+        printf("Expected cmd reg: 0x%X, but got: 0x%X\n", expected_cmd, cmd);
+    }
+    if (status != expected_status) {
+        ++(*errors);
+        printf("Expected status reg: 0x%X, but got: 0x%X\n", expected_status, status);
+    }
 }
-void check_sha256(int* errors){
+
+void check_ABS(int* errors) {
+    UP_APB_A = 0x05;
+    UP_APB_B = 0xA0;
+    unsigned expected = 0x05 | 0xA0;
+
+    unsigned a = UP_APB_A;
+    unsigned b = UP_APB_B;
+    unsigned s = UP_APB_S;
+
+    printf("A = 0x%X, B = 0x%X, S = 0x%X\n", a, b, s);
+    if (s != expected) {
+        ++(*errors);
+        printf("Expect 0x%X, but got 0x%X\n", expected, s);
+    }
+}
+
+// Check ctrl / cmd / status regs behavior without irq.
+void check_ccs_no_irq(int* errors) {
+    printf("Initial ctrl/status values:\n");
+    show_and_check_regs(errors, 0, 0);
+
+    // Enable interrupt
+    UP_APB_CTRL = UP_CTRL_INT_EN_BIT;
+    printf("User Plugin Interrupt enabled\n");
+    show_and_check_regs(errors, UP_CTRL_INT_EN_BIT, 0);;
+
+    // Set interrupt pending
+    UP_APB_CMD = UP_CMD_SET_INT_BIT;
+    printf("User Plugin Interrupt pending set\n");
+    show_and_check_regs(errors, UP_CTRL_INT_EN_BIT, UP_STATUS_INT_BIT);
+
+    // Clear interrupt pending
+    UP_APB_CMD = UP_CMD_CLR_INT_BIT;
+    printf("User Plugin Interrupt pending set\n");
+    show_and_check_regs(errors, UP_CTRL_INT_EN_BIT, 0);
+
+    // Set interrupt pending
+    UP_APB_CMD = UP_CMD_SET_INT_BIT;
+    // Disable interrupt
+    UP_APB_CTRL = 0;
+    printf("User Plugin Interrupt pending set, but interrupt disabled\n");
+    show_and_check_regs(errors, 0, UP_STATUS_INT_BIT);
+}
+
+// Check ctrl / cmd / status regs behavior with irq.
+void check_ccs_irq(int* errors) {
+    //
+    // Make sure no irq pending
+    //
+    // Disable irq within user plugin peripherals.
+    UP_APB_CTRL = 0;
+    // Clear pending int
+    UP_APB_CMD = UP_CMD_CLR_INT_BIT;
 
     //
     // Global enable User plugin interrupt
@@ -84,31 +107,30 @@ void check_sha256(int* errors){
     int_enable();
     IER = IER | (1 << IRQ_UP_IDX); // Enable User plugin interrupt
 
-    // Enable interrupt within user plugin peripheral
-    UP_APB_CTRL = UP_CTRL_INT_EN_BIT;
-    printf("User Plugin Interrupt has been enabled\n");
-
     g_up_int_triggers = 0;
 
-    SHA256_MESSAGE = 0x303030;
-    
-    do_check_sha256(errors, 0);
+    // Enable interrupt within user plugin peripheral
+    UP_APB_CTRL = UP_CTRL_INT_EN_BIT;
+    // Set interrupt pending, and interrupt handler will be called.
+    printf("User Plugin Interrupt has been enabled\n");
+    printf("Going to set int pending bit, and int handler will be called\n");
+    UP_APB_CMD = UP_CMD_SET_INT_BIT;
+    // For zeroriscy cpu core, the interrupt is handled after one 'nop'.
+    // For ri5cy cpu core, the interrupt is handled after two 'nop's.
+    asm volatile("nop");
+    asm volatile("nop");
 
-    SHA256_MESSAGE = 0x313131;
-    
-    do_check_sha256(errors, 1);
-
-    SHA256_MESSAGE = 0x323232;
-    
-    do_check_sha256(errors, 2);
-
+    if (g_up_int_triggers != 1) {
+        ++(*errors);
+        printf("Expect to enter interrupt handler once, but actual number: %d\n", g_up_int_triggers);
+    }
 }
 
 int main(){
-
     int errors = 0;
-    
-    //there for check sha256
-    check_sha256(&errors); 
-    
-    return (errors != 0); }
+
+    check_ABS(&errors);
+    check_ccs_no_irq(&errors);
+    check_ccs_irq(&errors);
+    return !(errors == 0);
+}
