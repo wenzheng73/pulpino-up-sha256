@@ -30,7 +30,7 @@ void ISR_UP() {
 void write_word(unsigned int address, int word){
     //printf("address is 0x%x.\n",address);
     //printf("message is 0x%08X.\n",word);
-	SHA256_ADDRESS = address;
+    SHA256_ADDRESS = address;
     SHA256_MESSAGE = word;
     SHA256_RW = 0x3 ;
     SHA256_RW = 0x0;	
