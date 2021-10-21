@@ -204,7 +204,7 @@ module sha2apb
             `SHA_REG_DIGEST:
                 PRDATA = r_hashed_data;
             default:
-                PRDATA = {20'b0,PADDR};//for unused PADDR
+                PRDATA = 'b0;//for unused PADDR
         endcase 
     end
     /////////////////////

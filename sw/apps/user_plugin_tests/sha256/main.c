@@ -7,7 +7,6 @@
 #include "event.h"
 #include "cpu_hal.h"
 #include "uart.h"
-#include "bench.h"
 #include "user_plugin/sha256.h"
 
 #define IRQ_UP_IDX 22
