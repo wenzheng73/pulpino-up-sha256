@@ -28,8 +28,8 @@ void ISR_UP() {
 //---------write process----------//
 //write_word
 void write_word(unsigned int address, int word){
-    printf("address is 0x%x.\n",address);
-    printf("message is 0x%08X.\n",word);
+    //printf("address is 0x%x.\n",address);
+    //printf("message is 0x%08X.\n",word);
 	SHA256_ADDRESS = address;
     SHA256_MESSAGE = word;
     SHA256_RW = 0x3 ;
@@ -57,7 +57,6 @@ void write_block(){
     write_word(ADDR_BLOCK13, w[13]);
     write_word(ADDR_BLOCK14, w[14]);
     write_word(ADDR_BLOCK15, w[15]);
-    write_word(ADDR_CTRL, (CTRL_MODE_VALUE + CTRL_INIT_VALUE));
     printf("write_block process by finished here!!!\n");
 }
 //----------end write process----------//
@@ -79,6 +78,7 @@ void wait_ready(){
         printf("read_data is 0x%08X .\n",read_data);
         printf("Waiting for hash calculated completely!!!<_>\n");
     }
+    printf("Hash is calculated completely!!!<_>\n");
 }
 //
 unsigned int digest_data [8];
@@ -107,10 +107,10 @@ void read_digest(){
 //
 void do_check_sha256(int* errors, int msg_num){
 
-    unsigned expect_out [32] = {
-                           //message0 "a"(0x61)'s expected output
-                           0xCA978112, 0xCA1BBDCA, 0xFAC231B3, 0x9A23DC4D,
-                           0xA786EFF8, 0x147C4E72, 0xB9807785, 0xAFEE48BB,                   
+    unsigned int expect_out [32] = {
+                           //message0 ""expected output
+                           0xE3B0C442, 0x98FC1C14, 0x9AFBF4C8, 0x996FB924,
+                           0x27AE41E4, 0x649B934C, 0xA495991B, 0x7852B855,                   
                            //message1 "aaabbbcccdddeeefff"(0x616161626262636363646464656565666666)'s expected output
                            0x5662CF7A, 0xB1070E44, 0x8A9D28B4, 0xD39C188E,
                            0xEBCC91B6, 0x6F309F9C, 0x415C24A8, 0x15C82A04,
@@ -120,35 +120,19 @@ void do_check_sha256(int* errors, int msg_num){
                            0x63FA01CC, 0xBC542AB5, 0xE3DF163B, 0xE08E6CA9,
                            
                            //message3 "aaa...bbb...ccc...ddd"(0x61..62..63..64)'s expected output
-                           0xEC5A7706, 0xDF5E6AE5, 0x46A6F192, 0x5BB4CE3F, 
-                           0x62D62611, 0xD60AE851, 0xAABCD160, 0x8F99D23B, 
+                           0x6B2EC791, 0x70F50EA5, 0x7B886DC8, 0x1A2CF787, 
+                           0x21C651A0, 0x02C8365A, 0x524019A7, 0xED5A8A40
  
                            }; 
-
-
-    unsigned int expect_msg = {
-                          0x61000000, //message1: "a"
-                         };
-
-    //Read message and outputs
-    if (msg_num == 0){
-        unsigned int message = SHA256_MESSAGE;
-        if(message != expect_msg){
-           printf("MESSAGE WRONG! EXPECTED MESSAGE IS 0x%X, WRONG MESSAGE IS 0x%X",expect_msg,message);
-        }
-        else{
-            printf("MESSAGE RIGHT! MESSAGE IS 0x%X \n",message);
-        }
-    }
     
     for(int i = 0; i < 8; i++ ){
         if( digest_data[i] != expect_out[i + msg_num * 8] ){
-            ++errors;
-            printf("EXPECTED OUTPUT IS 0x%X, WRONG OUTPUT IS 0x%X \n", expect_out[i + msg_num * 8], digest_data[i]);
+            ++(*errors);
+            printf("EXPECTED OUTPUT IS 0x%08X, WRONG OUTPUT IS 0x%08X \n", expect_out[i + msg_num * 8], digest_data[i]);
         }
 
         else{
-            printf("OUT RIGHT! OUT IS 0x%X \n", digest_data[i] );  
+            printf("OUT RIGHT! OUT IS 0x%08X \n", digest_data[i] );  
         }
     }
  
@@ -183,29 +167,16 @@ void handle_message(const char *msg_in, size_t len){
                 val = 0;
             }
         }
-        printf("w[0] is 0x%08X.\n",w[0]);
-        printf("w[1] is 0x%08X.\n",w[1]);
-        printf("w[2] is 0x%08X.\n",w[2]);
-        printf("w[3] is 0x%08X.\n",w[3]);
-        printf("w[4] is 0x%08X.\n",w[4]);
-        printf("w[5] is 0x%08X.\n",w[5]);
-        printf("w[6] is 0x%08X.\n",w[6]);
-        printf("w[7] is 0x%08X.\n",w[7]);
-        printf("w[8] is 0x%08X.\n",w[8]);
-        printf("w[9] is 0x%08X.\n",w[9]);
-        printf("w[10] is 0x%08X.\n",w[10]);
-        printf("w[11] is 0x%08X.\n",w[11]);
-        printf("w[12] is 0x%08X.\n",w[12]);
-        printf("w[13] is 0x%08X.\n",w[13]);
-        printf("w[14] is 0x%08X.\n",w[14]);
-        printf("w[15] is 0x%08X.\n",w[15]);
+        for (size_t i = 0; i < 16; i++){
+            printf("w[%d] is 0x%08X.\n",i,w[i]);
+        }
         //write message to hardware
         printf("write_process is here!!!\n");
         write_block();
-        
+        write_word(ADDR_CTRL, (CTRL_MODE_VALUE + CTRL_INIT_VALUE));
+        //wait for generation digest
+        wait_ready();
     }
-    //wait for generation digest
-    wait_ready();
     //read digest from hardware
     read_digest();
 }
@@ -233,20 +204,37 @@ void check_sha256(int* errors){
     UP_APB_CTRL = UP_CTRL_INT_EN_BIT;
     printf("User Plugin Interrupt has been enabled\n");
     
-    UP_APB_CMD = UP_CMD_SET_INT_BIT;
     //input the information to be encrypted
     //pre_processing
     //entering message to hardware for encrypting    
-    //unsigned char msg_in[] = "a";
-    //unsigned char msg_in[] = "aaabbbcccdddeeefff";
-    const char msg_in[] = "hello world!";
-    /*unsigned char msg_in[] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
-                             bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\
-                             ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\
-                             ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";*/
-    handle_message(msg_in,strlen(msg_in));
+    const char msg_in0[] = "";
+    const char msg_in1[] = "aaabbbcccdddeeefff";
+    const char msg_in2[] = "hello world!";
+    const char msg_in3[] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    //Set interrupt pending
+    UP_APB_CMD = UP_CMD_SET_INT_BIT;
+    handle_message(msg_in0,strlen(msg_in0));
+    //do check result of sha256
+    do_check_sha256(errors,0);
+    
+    //Set interrupt pending
+    UP_APB_CMD = UP_CMD_SET_INT_BIT;
+    handle_message(msg_in1,strlen(msg_in1));
+    //do check result of sha256
+    do_check_sha256(errors,1);
+    
+    //Set interrupt pending
+    UP_APB_CMD = UP_CMD_SET_INT_BIT;
+    handle_message(msg_in2,strlen(msg_in2));
     //do check result of sha256
     do_check_sha256(errors,2);
+    
+    //Set interrupt pending
+    UP_APB_CMD = UP_CMD_SET_INT_BIT;
+    handle_message(msg_in3,strlen(msg_in3));
+    //do check result of sha256
+    do_check_sha256(errors,3);
+
 }
 
 int main(int argc,char*argv[]){
@@ -256,6 +244,6 @@ int main(int argc,char*argv[]){
     int errors = 0;
     //there for check sha256
     check_sha256(&errors); 
-    
+    printf("error's num is %d !", &errors);
     return (errors != 0); 
 }
