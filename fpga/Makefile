@@ -24,3 +24,7 @@ zedboard-2019:
 icbv1board-2019:
 	make -C pulpino-icbv1board-2019/ all
 	@echo "Bitstream generation for icbv1board finished."
+.PHONY: icbv1board-2020
+icbv1board-2019:
+	make -C pulpino-icbv1board-2020/ all
+	@echo "Bitstream generation for icbv1board finished."
