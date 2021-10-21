@@ -108,23 +108,25 @@ void read_digest(){
 void do_check_sha256(int* errors, int msg_num){
 
     unsigned int expect_out [32] = {
-                           //message0 ""expected output
-                           0xE3B0C442, 0x98FC1C14, 0x9AFBF4C8, 0x996FB924,
-                           0x27AE41E4, 0x649B934C, 0xA495991B, 0x7852B855,                   
-                           //message1 "aaabbbcccdddeeefff"(0x616161626262636363646464656565666666)'s expected output
-                           0x5662CF7A, 0xB1070E44, 0x8A9D28B4, 0xD39C188E,
-                           0xEBCC91B6, 0x6F309F9C, 0x415C24A8, 0x15C82A04,
-                           
-                           //message2 "hello world!"(0x68656c6c6f20776f726c6421)'s expected output
-                           0x7509E5BD, 0xA0C762D2, 0xBAC7F90D, 0x758B5B22, 
-                           0x63FA01CC, 0xBC542AB5, 0xE3DF163B, 0xE08E6CA9,
-                           
-                           //message3 "aaa...bbb...ccc...ddd"(0x61..62..63..64)'s expected output
-                           0x6B2EC791, 0x70F50EA5, 0x7B886DC8, 0x1A2CF787, 
-                           0x21C651A0, 0x02C8365A, 0x524019A7, 0xED5A8A40
+                  //message0 ""(empty)expected output
+                  0xE3B0C442, 0x98FC1C14, 0x9AFBF4C8, 0x996FB924,
+                  0x27AE41E4, 0x649B934C, 0xA495991B, 0x7852B855,     
+
+                  //message1 "hello world!"'s expected output
+                  0x7509E5BD, 0xA0C762D2, 0xBAC7F90D, 0x758B5B22, 
+                  0x63FA01CC, 0xBC542AB5, 0xE3DF163B, 0xE08E6CA9,
+      
+                  //message2 "abcdbcdecdefdefg...efghfghigmnopnopq"'s(56byte) expected output
+                  0x248D6A61, 0xD20638B8, 0xE5C02693, 0x0C3E6039,
+                  0xA33CE459, 0x64FF2167, 0xF6ECEDD4, 0x19DB06C1,
+                  
+                                          
+                  //message3 "aaa...bbb...ccc...ddd"(0x61..62..63..64)'s(90byte) expected output
+                  0x6B2EC791, 0x70F50EA5, 0x7B886DC8, 0x1A2CF787, 
+                  0x21C651A0, 0x02C8365A, 0x524019A7, 0xED5A8A40
+
+                  }; 
  
-                           }; 
-    
     for(int i = 0; i < 8; i++ ){
         if( digest_data[i] != expect_out[i + msg_num * 8] ){
             ++(*errors);
@@ -160,7 +162,7 @@ void handle_message(const char *msg_in, size_t len){
     printf("chunk_len is %d.\n",chunk_len);
     for (size_t idx = 0; idx < chunk_len; idx++){
         uint32_t val = 0;
-        for (int i = 0; i < 64; i++){ //16 * 32bit big_endian, as w[0], ... w[15]
+      for (int i = 0; i < 64; i++){ //16 * 32bit big_endian, as w[0], ... w[15]
             val = val | (*(new_msg + idx * 64 + i) << (8 * (3 - i)));
             if(i % 4 == 3){
                 w[i/4] = val;
@@ -173,7 +175,13 @@ void handle_message(const char *msg_in, size_t len){
         //write message to hardware
         printf("write_process is here!!!\n");
         write_block();
-        write_word(ADDR_CTRL, (CTRL_MODE_VALUE + CTRL_INIT_VALUE));
+        //
+        if (idx == 0){
+            write_word(ADDR_CTRL, (CTRL_MODE_VALUE + CTRL_INIT_VALUE));
+        }
+        else{ 
+            write_word(ADDR_CTRL, (CTRL_MODE_VALUE + CTRL_NEXT_VALUE)); 
+        }
         //wait for generation digest
         wait_ready();
     }
@@ -206,10 +214,14 @@ void check_sha256(int* errors){
     
     //input the information to be encrypted
     //pre_processing
-    //entering message to hardware for encrypting    
-    const char msg_in0[] = "";
-    const char msg_in1[] = "aaabbbcccdddeeefff";
-    const char msg_in2[] = "hello world!";
+    //entering message to hardware for encrypting 
+    //The information msg_in0 to be encrypted is empty(no information, size: 0byte)  
+    //The information msg_in1 to be encrypted is "hello world!"(size: 11byte)  
+    //The information msg_in2 to be encrypted is "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq" (size: 56byte) 
+    //The information msg_in3 to be encrypted is "aaaaaaaaaaaaaaaa......aaaaaaaaaaa" (size: 90byte > 56byte) 
+    const char msg_in0[] = ""; 
+    const char msg_in1[] = "hello world!";
+    const char msg_in2[] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
     const char msg_in3[] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     //Set interrupt pending
     UP_APB_CMD = UP_CMD_SET_INT_BIT;
@@ -244,6 +256,6 @@ int main(int argc,char*argv[]){
     int errors = 0;
     //there for check sha256
     check_sha256(&errors); 
-    printf("error's num is %d !", &errors);
+    printf("ERRORS: %d\n", errors);
     return (errors != 0); 
 }
