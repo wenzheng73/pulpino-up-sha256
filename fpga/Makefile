@@ -26,5 +26,5 @@ icbv1board-2019:
 	@echo "Bitstream generation for icbv1board finished."
 .PHONY: icbv1board-2020
 icbv1board-2020:
-	make -C pulpino-icbv1board-2020.3/ all
+	make -C pulpino-icbv1board-2020.2/ all
 	@echo "Bitstream generation for icbv1board finished."
